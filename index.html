@@ -1,0 +1,535 @@
+<html>
+<head>
+    <title>Hádací Hra</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+         body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            color: #333;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Tlačítka a prvky viditelné v obou režimech */
+        button, .options button, .levels button {
+            color: inherit;
+            background-color: inherit;
+            border: 1px solid #333;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        .options button:hover, .levels button:hover {
+            background-color: #ddd;
+        }
+
+        /* Tlačítko přepínání */
+        .switch-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            outline: none;
+            transition: transform 0.3s;
+        }
+
+        .switch-button img {
+            width: 30px;
+            height: 30px;
+            transition: transform 0.3s;
+        }
+
+        .switch-button:hover img {
+            transform: scale(1.1);
+        }
+
+         /* Noční režim */
+         .dark-mode {
+            background-color: #212121;
+            color: #f0f0f0;
+        }
+
+        .dark-mode .options button, .dark-mode .levels button{
+            background-color: #464646;
+            color: #f0f0f0;
+            border: 1px solid #f0f0f0;
+        }
+        
+        .dark-mode .roulette span{
+            color: #ddd;
+        }
+
+        .dark-mode .options button:hover, .dark-mode .levels button:hover {
+            background-color: #464646;
+        }
+        .container {
+            text-align: center;
+        }
+        .maple-leaf {
+            width: 150px;
+            height: 150px;
+            background-image: url('./obr/logo.png');
+            background-size: cover;
+            cursor: pointer;
+            transition: transform 0.3s;
+            margin: 0 auto;
+        }
+        .maple-leaf:hover {
+            transform: scale(1.1);
+        }
+        .mini-maple-leaf {
+            width: 25px;
+            height: 25px;
+            background-image: url('./obr/mini-logo.png');
+            background-size: cover;
+            cursor: pointer;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            display: none;
+        }
+        .mini-maple-leaf:hover {
+            transform: scale(1.1);
+        }
+        .roulette, .options, .levels, .result, .summary {
+            display: none;
+            margin-top: 20px;
+        }
+        .roulette span, .options button, .levels button, .result span, .summary span {
+            font-size: 1.5em;
+            color: #333;
+            margin: 10px;
+        }
+        .options button, .levels button {
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .options button:hover, .levels button:hover {
+            background-color: #ddd;
+        }
+        .result span.correct {
+            color: green;
+        }
+        .result span.wrong {
+            color: red;
+        }
+        .centered-image {
+            display: block;
+            margin: 0 auto;
+            width: 120px;
+            height: 80px;
+        }
+    </style>
+</head>
+<body>
+    <button id="switchButton" class="switch-button">
+        <img id="modeIcon" src="./obr/night_icon.png" alt="Day mode icon">
+    </button>
+
+    <div class="container">
+        <div class="maple-leaf" id="mapleLeaf" alt="Red maple leaf icon"></div>
+        <div class="mini-maple-leaf" id="miniMapleLeaf" alt="Mini red maple leaf icon"></div>
+        <div class="levels" id="levels">
+            <button data-time="10" data-level="easy">Easy</button>
+            <button data-time="10" data-level="medium">Medium</button>
+            <button data-time="7" data-level="hard">Hard</button>
+            <button data-time="5" data-level="divine">DIVINE</button>
+        </div>
+        <div class="roulette" id="roulette">
+            <span id="randomTime"></span>
+        </div>
+        <div class="options" id="options">
+            <button data-answer="wrong">Option 1</button>
+            <button data-answer="wrong">Option 2</button>
+            <button data-answer="wrong">Option 3</button>
+            <button data-answer="wrong">Option 4</button>
+        </div>
+        <div class="result" id="result">
+            <span id="resultMessage"></span>
+        </div>
+        <div class="summary" id="summary">
+            <span id="summaryMessage"></span>
+            <button id="restartButton">Restart</button>
+        </div>
+    </div>
+
+    <audio id="gameSound" src="./sysZvuky/button.mp3"></audio>
+    <audio id="laughSound" src="./sysZvuky/laugh.mp3"></audio>
+    <audio id="correctSound" src="./sysZvuky/correct.mp3"></audio>
+    <audio id="wrongSound" src="./sysZvuky/wrong.mp3"></audio>
+
+    <script>
+        const mapleLeaf = document.getElementById('mapleLeaf');
+        const miniMapleLeaf = document.getElementById('miniMapleLeaf');
+        const levels = document.getElementById('levels');
+        const roulette = document.getElementById('roulette');
+        const options = document.getElementById('options');
+        const result = document.getElementById('result');
+        const summary = document.getElementById('summary');
+        const randomTimeElement = document.getElementById('randomTime');
+        const resultMessage = document.getElementById('resultMessage');
+        const summaryMessage = document.getElementById('summaryMessage');
+        const restartButton = document.getElementById('restartButton');
+        const gameSound = document.getElementById('gameSound');
+        const laughSound = document.getElementById('laughSound');
+        const correctSound = document.getElementById('correctSound');
+        const wrongSound = document.getElementById('wrongSound');
+
+        let countdown;
+        let randomTime;
+        let questionCount = 0;
+        const maxQuestions = 10;
+        let correctAnswers = 0;
+        let currentLevel = '';
+
+        const switchButton = document.getElementById('switchButton');
+        const modeIcon = document.getElementById('modeIcon');
+
+        // Nastavení výchozího režimu podle času
+        function setInitialMode() {
+            const hour = new Date().getHours();
+            if (hour >= 18 || hour < 6) {
+                document.body.classList.add('dark-mode');
+                modeIcon.src = './obr/day_icon.png';
+            } else {
+                document.body.classList.remove('dark-mode');
+                modeIcon.src = './obr/night_icon.png';
+            }
+        }
+
+        switchButton.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            if (document.body.classList.contains('dark-mode')) {
+                modeIcon.src = './obr/day_icon.png'; // Obrázek pro noční režim
+            } else {
+                modeIcon.src = './obr/night_icon.png'; // Obrázek pro denní režim
+            }
+        });
+        // Zavolání funkce pro nastavení režimu při načtení stránky
+        setInitialMode();
+
+        const easyQuestions = [
+            {   // 1
+                image: "./obr/Faerie_Fire.jpg",
+                correctAnswer: "Faerie Fire",
+                wrongAnswers: ["Dust", "Diadem", "Infused Raindrops"]
+            },
+            {   // 2
+                image: "./obr/Cornucopia.jpg",
+                correctAnswer: "Cornucopia",
+                wrongAnswers: ["Tiara of Selemene", "Diadem", "Ring of Health"]
+            },
+            {   // 3
+                image: "./obr/Gloves_of_Haste.jpg",
+                correctAnswer: "Gloves of Haste",
+                wrongAnswers: ["Gloves of Speed", "Wind Lace", "Attack Gloves"]
+            },
+            {   // 4
+                image: "./obr/Mystic_Staff.jpg",
+                correctAnswer: "Mystic Staff",
+                wrongAnswers: ["Magic Staff", "Staff of Mystic", "Oblivion Staff"]
+            },
+            {   // 5
+                image: "./obr/Helm_of_the_Overlord.jpg",
+                correctAnswer: "Helm of the Overlord",
+                wrongAnswers: ["Helm of the Dominator", "Helm of Discord", "Helm of Domino"]
+            },
+            {   // 6
+                image: "./obr/Helm_of_the_Overlord.jpg",
+                correctAnswer: "Helm of the Overlord",
+                wrongAnswers: ["Helm of the Dominator", "Helm of Discord", "Helm of Domino"]
+            },
+            {   // 7
+                image: "./obr/Pavise.jpg",
+                correctAnswer: "Pavise",
+                wrongAnswers: ["Magic Armor", "Mage Mail", "Mage Slayer"]
+            },
+            {   // 8
+                image: "./obr/Scythe_of_Vyse.jpg",
+                correctAnswer: "Scythe of Vyse",
+                wrongAnswers: ["Sythe of Vyse", "Scythe of Vise", "Scythe of Vyce"]
+            },
+            {   // 9
+                image: "./obr/Overwhelming_Blink.jpg",
+                correctAnswer: "Overwhelming Blink",
+                wrongAnswers: ["Blink of Strenght", "Strenght Blink", "Blink of Overwhelming"]
+            },
+            {   // 10
+                image: "./obr/Yasha_and_Kaya.jpg",
+                correctAnswer: "Yasha and Kaya",
+                wrongAnswers: ["Kaya and Sange", "Sange and Yasha", "Kaya and Yasha"]
+            },
+            {   // 11
+                image: "./obr/Great_Healing_Lotus.jpg",
+                correctAnswer: "Great Healing Lotus",
+                wrongAnswers: ["Greater Healing Lotus", "Healing Lotus", "Greatest Healing Lotus"]
+            },
+            {   // 12
+                image: "./obr/Drum_of_Endurance.jpg",
+                correctAnswer: "Drum of Endurance",
+                wrongAnswers: ["Drum of Speed", "Drum of Bearing", "Drum of Battlegear"]
+            },
+            {   // 13
+                image: "./obr/Nullifier.jpg",
+                correctAnswer: "Nullifier",
+                wrongAnswers: ["Revenant's Brooch", "Phylactery", "Talisman of Spell Shield"]
+            },
+            {   // 14
+                image: "./obr/Eternal_Shroud.jpg",
+                correctAnswer: "Eternal Shroud",
+                wrongAnswers: ["Eteral Shroud", "Ethernal Shroud", "Eternal Shroude"]
+            },
+            {   // 15
+                image: "./obr/Assault_Cuirass.jpg",
+                correctAnswer: "Assault Cuirass",
+                wrongAnswers: ["Vanguard Plate", "Aegis Harness", "Bulwark of Valor"]
+            },
+            {   // 16
+                image: "./obr/Linkens_Sphere.jpg",
+                correctAnswer: "Linken's Sphere",
+                wrongAnswers: ["Oracle's Ward", "Veil of Sanctuary", "Astral Prism"]
+            },
+            {   // 17
+                image: "./obr/Bloodstone.jpg",
+                correctAnswer: "4400",
+                wrongAnswers: ["4200", "4150", "4800"]
+            },
+            {   // 18
+                image: "./obr/Armlet_of_Mordiggian.jpg",
+                correctAnswer: "2500",
+                wrongAnswers: ["2250", "2350", "2400"]
+            },
+            {   // 19
+                image: "./obr/Khanda.jpg",
+                correctAnswer: "5000",
+                wrongAnswers: ["4750", "4500", "5250"]
+            },
+            {   // 20
+                image: "./obr/Abyssal_Blade.jpg",
+                correctAnswer: "6250",
+                wrongAnswers: ["6150", "6400", "6375"]
+            },
+            {   // 21
+                image: "./obr/Arcane_Blink.jpg",
+                correctAnswer: "6800",
+                wrongAnswers: ["6450", "6750", "6600"]
+            },
+            {   // 22
+                image: "./obr/Eye_of_Skadi.jpg",
+                correctAnswer: "5300",
+                wrongAnswers: ["5250", "5450", "5150"]
+            },
+            // Add more image questions as needed   
+        ];
+
+        const mediumQuestions = [
+            {
+                sound: "./zvuky/Abaddon_attack1.mp3",
+                correctAnswer: "Abaddon Attack 1",
+                wrongAnswers: ["Abaddon Death", "Abaddon Footstep 2", "Abaddon Foley 3"]
+            },
+            {
+                sound: "./zvuky/Abaddon_attack2.mp3",
+                correctAnswer: "Abaddon Attack 2",
+                wrongAnswers: ["Abaddon Preattack 1", "Abaddon Foley 1", "Abaddon Death"]
+            },
+            {
+                sound: "./zvuky/itemy/Abyssal_Blade.mp3",
+                correctAnswer: "Abyssal Blade",
+                wrongAnswers: ["Abaddon Preattack 1", "Abaddon Foley 1", "Abaddon Death"]
+            },
+            {
+                sound: "./zvuky/itemy/Aeon_Disk.mp3",
+                correctAnswer: "Aeon Disk",
+                wrongAnswers: ["Ti", "Si", "Gei"]
+            },
+            // Add more questions as needed
+        ];
+
+        const hardQuestions = [
+            {
+                sound: "./zvuky/Abaddon_attack1.mp3",
+                correctAnswer: "Abaddon Attack 1",
+                wrongAnswers: ["Abaddon Death", "Abaddon Footstep 2", "Abaddon Foley 3"]
+            },
+            {
+                sound: "./zvuky/Abaddon_attack2.mp3",
+                correctAnswer: "Abaddon Attack 2",
+                wrongAnswers: ["Abaddon Preattack 1", "Abaddon Foley 1", "Abaddon Death"]
+            },
+            {
+                sound: "./zvuky/itemy/Abyssal_Blade.mp3",
+                correctAnswer: "Abyssal Blade",
+                wrongAnswers: ["Abaddon Preattack 1", "Abaddon Foley 1", "Abaddon Death"]
+            },
+            {
+                sound: "./zvuky/itemy/Aeon_Disk.mp3",
+                correctAnswer: "Aeon Disk",
+                wrongAnswers: ["Ti", "Si", "Gei"]
+            },
+            // Add more questions as needed
+        ];
+
+        const divineQuestions = [
+            {
+                sound: "./zvuky/Abaddon_attack1.mp3",
+                correctAnswer: "Abaddon Attack 1",
+                wrongAnswers: ["Abaddon Death", "Abaddon Footstep 2", "Abaddon Foley 3"]
+            },
+            {
+                sound: "./zvuky/Abaddon_attack2.mp3",
+                correctAnswer: "Abaddon Attack 2",
+                wrongAnswers: ["Abaddon Preattack 1", "Abaddon Foley 1", "Abaddon Death"]
+            },
+            {
+                sound: "./zvuky/itemy/Abyssal_Blade.mp3",
+                correctAnswer: "Abyssal Blade",
+                wrongAnswers: ["Abaddon Preattack 1", "Abaddon Foley 1", "Abaddon Death"]
+            },
+            {
+                sound: "./zvuky/itemy/Aeon_Disk.mp3",
+                correctAnswer: "Aeon Disk",
+                wrongAnswers: ["Ti", "Si", "Gei"]
+            },
+            // Add more questions as needed
+        ];
+
+        function startGame() {
+            questionCount = 0;
+            correctAnswers = 0;
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            if (questionCount >= maxQuestions) {
+                summaryMessage.innerText = `Hra dokončena! Správně: ${correctAnswers} z ${maxQuestions}`;
+                summary.style.display = 'block';
+                return;
+            }
+
+            questionCount++;
+            
+            // Nastavíme pevný čas pro každý level, místo náhodného času
+            randomTime = parseFloat(levels.querySelector(`button[data-level="${currentLevel}"]`).getAttribute('data-time'));
+            randomTimeElement.innerText = randomTime + 's';
+            result.style.display = 'none';
+            options.style.display = 'block';
+            roulette.style.display = 'block'; // Zobrazí čas i v levelu easy
+
+            // Výběr otázky a zamíchání odpovědí
+            let question;
+            if (currentLevel === 'easy') {
+                question = easyQuestions[Math.floor(Math.random() * easyQuestions.length)];
+                const imageElement = document.createElement('img');
+                imageElement.src = question.image;
+                imageElement.alt = "Placeholder image for guessing game";
+                imageElement.className = 'centered-image';
+                roulette.innerHTML = '';
+                roulette.appendChild(imageElement);
+            } else if (currentLevel === 'medium') {
+                question = mediumQuestions[Math.floor(Math.random() * mediumQuestions.length)];
+                gameSound.src = question.sound;
+                gameSound.volume = 0.2;
+                gameSound.play();
+            } else if (currentLevel === 'hard') {
+                question = hardQuestions[Math.floor(Math.random() * hardQuestions.length)];
+                gameSound.src = question.sound;
+                gameSound.volume = 0.2;
+                gameSound.play();
+            } else if (currentLevel === 'divine') {
+                question = divineQuestions[Math.floor(Math.random() * divineQuestions.length)];
+                gameSound.src = question.sound;
+                gameSound.volume = 0.2;
+                gameSound.play();
+            }
+
+            // Zamíchání odpovědí
+            const answers = [...question.wrongAnswers];
+            const correctIndex = Math.floor(Math.random() * (answers.length + 1));
+            answers.splice(correctIndex, 0, question.correctAnswer); // Přidání správné odpovědi na náhodné místo
+
+            const optionButtons = options.querySelectorAll('button');
+            optionButtons.forEach((button, index) => {
+                button.innerText = answers[index];
+                button.setAttribute('data-answer', index === correctIndex ? 'correct' : 'wrong');
+            });
+
+            // Nastavení odpočítávání
+            countdown = setInterval(() => {
+                randomTime -= 0.1;
+                randomTimeElement.innerText = randomTime.toFixed(1) + 's';
+                if (randomTime <= 0) {
+                    clearInterval(countdown);
+                    if (currentLevel !== 'easy') gameSound.pause();
+                    randomTimeElement.innerText = 'Čas vypršel!';
+                    options.style.display = 'none';
+                    setTimeout(nextQuestion, 5000);
+                }
+            }, 100);
+        }
+
+
+        mapleLeaf.addEventListener('click', function() {
+            this.style.display = 'none';
+            levels.style.display = 'block';
+            miniMapleLeaf.style.display = 'block';
+        });
+
+        miniMapleLeaf.addEventListener('click', function() {
+            this.style.display = 'none';
+            levels.style.display = 'none';
+            roulette.style.display = 'none';
+            options.style.display = 'none';
+            result.style.display = 'none';
+            summary.style.display = 'none';
+            mapleLeaf.style.display = 'block';
+        });
+
+        levels.addEventListener('click', function(event) {
+            if (event.target.tagName === 'BUTTON') {
+                currentLevel = event.target.getAttribute('data-level');
+                levels.style.display = 'none';
+                roulette.style.display = 'block';
+                startGame();
+            }
+        });
+
+        options.addEventListener('click', function(event) {
+            if (event.target.tagName === 'BUTTON') {
+                clearInterval(countdown);
+                if (currentLevel !== 'easy') gameSound.pause();
+                options.style.display = 'none';
+                if (event.target.getAttribute('data-answer') === 'correct') {
+                    resultMessage.innerText = 'Správně!';
+                    resultMessage.className = 'correct';
+                    correctSound.play();
+                    correctAnswers++;
+                } else {
+                    resultMessage.innerText = 'Špatně!';
+                    resultMessage.className = 'wrong';
+                    wrongSound.play();
+                }
+                result.style.display = 'block';
+                setTimeout(nextQuestion, 5000);
+            }
+        });
+
+        restartButton.addEventListener('click', function() {
+            summary.style.display = 'none';
+            levels.style.display = 'block';
+            miniMapleLeaf.style.display = 'block';
+        });
+    </script>
+</body>
+</html>
