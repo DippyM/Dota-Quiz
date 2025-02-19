@@ -42,9 +42,10 @@ Dota Quiz je webová hra, která testuje vaše znalosti předmětů ze hry Dota 
 
 2. Otevřete index.html v libovolném webovém prohlížeči.
 
-## Screenshoty
+## Ukázka
 
-(Doplň sem screenshoty hry)
+![Cybersecurity Demo](https://github.com/DippyM/Dota-Quiz/blob/master/LightMode.gif)
+![Cybersecurity Demo](https://github.com/DippyM/Dota-Quiz/blob/master/Test.gif)
 
 ## Autor
 
